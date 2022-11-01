@@ -8,6 +8,8 @@
 #include "bsod.h"
 #include "../other/color.hpp"
 
+#define STATUS_SUCCESS   ((NTSTATUS)0x00000000L) 
+
 namespace protector {
 
 	/* The more you increase the value, the later it will detect it, so adjust it carefully. */
@@ -76,6 +78,7 @@ namespace protector {
 
 		if (IsDebuggerPresent())
 		{
+			debugger_detected("IsDebuggerPresent");
 			exit(1);
 		}
 		else
@@ -96,6 +99,7 @@ namespace protector {
 		}
 
 	}
+
 
 	/* Exe Detection Function */
 	void exe_detect()
@@ -208,6 +212,8 @@ namespace protector {
 			{
 				debugger_detected(XorStr("Snowman"));
 			}
+
+
 		}
 
 		VMProtectEnd();
@@ -235,6 +241,18 @@ namespace protector {
 			}
 
 			window = FindWindow(0, XorStr(("Cheat Engine")).c_str());
+			if (window)
+			{
+				debugger_detected(XorStr("CheatEngine"));
+			}
+
+			window = FindWindow(0, XorStr(("Cheat Engine 7.4")).c_str());
+			if (window)
+			{
+				debugger_detected(XorStr("CheatEngine"));
+			}
+
+			window = FindWindow(0, XorStr(("Cheat Engine 7.3")).c_str());
 			if (window)
 			{
 				debugger_detected(XorStr("CheatEngine"));
@@ -387,6 +405,9 @@ namespace protector {
 		VMProtectEnd();
 	}
 
+
+
+
 	/* Driver Detection Function */
 	void driver_detect()
 	{
@@ -395,7 +416,7 @@ namespace protector {
 		if (scan_driver == true) {
 
 			const TCHAR* devices[] = {
-		_T("\\\\.\\NiGgEr"),
+		_T("\\\\.\\Dumper"),
 		_T("\\\\.\\KsDumper")
 			};
 
@@ -460,10 +481,161 @@ namespace protector {
 
 	}
 
+	/* For Anti Dump */
+	void EraseHeaderFromMemory()
+	{
+		VMProtectBeginUltra("EraseHeaderFromMemory Function");
+
+		DWORD oldProtect = 0;
+
+		char* baseAdress = (char*)GetModuleHandle(NULL);
+
+		// Change memory protection
+		VirtualProtect(baseAdress, 4096,
+			PAGE_READWRITE, &oldProtect);
+
+		// Erase the header
+		ZeroMemory(baseAdress, 4096);
+
+		VMProtectEnd();
+	}
+
+	BOOL ProcessDebugFlags()
+	{
+		VMProtectBeginUltra("ProcessDebugFlags Function");
+
+		/* Function Pointer Typedef for NtQueryInformationProcess */
+		typedef NTSTATUS(WINAPI* pNtQueryInformationProcess)(IN  HANDLE, IN  UINT, OUT PVOID, IN ULONG, OUT PULONG);
+
+		/* Created ProcessDebugFlags variable */
+		const int ProcessDebugFlags = 0x1f;
+
+		/* import the function */
+		pNtQueryInformationProcess NtQueryInfoProcess = NULL;
+
+		NTSTATUS Status;
+		DWORD NoDebugInherit = 0;
+
+		HMODULE hNtDll = LoadLibrary(TEXT(XorStr("ntdll.dll").c_str()));
+		if (hNtDll == NULL)
+		{
+
+		}
+
+		NtQueryInfoProcess = (pNtQueryInformationProcess)GetProcAddress(hNtDll, XorStr("NtQueryInformationProcess").c_str());
+
+		if (NtQueryInfoProcess == NULL)
+		{
+			
+		}
+
+		// Call function
+		Status = NtQueryInfoProcess(GetCurrentProcess(), ProcessDebugFlags, &NoDebugInherit, sizeof(DWORD), NULL);
+		if (Status != 0x00000000)
+			return false;
+		if (NoDebugInherit == FALSE) {
+			debugger_detected("ProcessDebugFlags");
+			return true;
+		}
+		else {
+			return false;
+		}
+
+		VMProtectEnd();
+	}
+
+	BOOL SystemKernelDebuggerInformation()
+	{
+
+		typedef struct _SYSTEM_KERNEL_DEBUGGER_INFORMATION {
+			BOOLEAN DebuggerEnabled;
+			BOOLEAN DebuggerNotPresent;
+		} SYSTEM_KERNEL_DEBUGGER_INFORMATION, * PSYSTEM_KERNEL_DEBUGGER_INFORMATION;
+		SYSTEM_KERNEL_DEBUGGER_INFORMATION Info;
+
+		enum SYSTEM_INFORMATION_CLASS { SystemKernelDebuggerInformation = 35 };
+
+		/* Function Pointer Typedef for ZwQuerySystemInformation */
+		typedef NTSTATUS(WINAPI* pZwQuerySystemInformation)(IN SYSTEM_INFORMATION_CLASS SystemInformationClass, IN OUT PVOID SystemInformation, IN ULONG SystemInformationLength, OUT PULONG ReturnLength);
+
+		/* import the function */
+		pZwQuerySystemInformation ZwQuerySystemInformation = NULL;
+
+		HANDLE hProcess = GetCurrentProcess();
+
+		HMODULE hNtDll = LoadLibrary(TEXT("ntdll.dll"));
+		if (hNtDll == NULL)
+		{
+	
+		}
+
+		ZwQuerySystemInformation = (pZwQuerySystemInformation)GetProcAddress(hNtDll, XorStr("ZwQuerySystemInformation").c_str());
+
+		if (ZwQuerySystemInformation == NULL)
+		{
+
+		}
+
+		// Call function
+		if (STATUS_SUCCESS == ZwQuerySystemInformation(SystemKernelDebuggerInformation, &Info, sizeof(Info), NULL)) {
+			if (Info.DebuggerEnabled)
+			{
+				if (Info.DebuggerNotPresent) {
+					return FALSE;
+				}
+				else {
+					debugger_detected("SystemKernelDebuggerInformation");
+					return TRUE;
+				}
+			}
+
+		}
+	}
+
+	BOOL ThreadHideFromDebugger()
+	{
+
+		/* Function Pointer Typedef for NtQueryInformationProcess */
+		typedef NTSTATUS(WINAPI* pNtSetInformationThread)(IN HANDLE, IN UINT, IN PVOID, IN ULONG);
+
+		const int ThreadHideFromDebugger = 0x11;
+
+		/* import the function */
+		pNtSetInformationThread NtSetInformationThread = NULL;
+
+		NTSTATUS Status;
+		BOOL IsBeingDebug = FALSE;
+
+		HMODULE hNtDll = LoadLibrary(TEXT("ntdll.dll"));
+		if (hNtDll == NULL)
+		{
+	
+		}
+
+		NtSetInformationThread = (pNtSetInformationThread)GetProcAddress(hNtDll, "NtSetInformationThread");
+
+		if (NtSetInformationThread == NULL)
+		{
+		
+		}
+
+		// Call Function
+		Status = NtSetInformationThread(GetCurrentThread(), ThreadHideFromDebugger, NULL, 0);
+
+		if (Status) {
+			IsBeingDebug = TRUE;
+			debugger_detected("ThreadHideFromDebugger");
+		}
+
+		return IsBeingDebug;
+	}
+
+
 	/* Start Protector Main Function */
 	void protector()
 	{
 		/* We do it once. */
+		EraseHeaderFromMemory();
 		one_killdbg();
 		while (true) {
 
@@ -471,11 +643,15 @@ namespace protector {
 			protector::exe_detect();
 			protector::title_detect();
 			protector::driver_detect();
+			protector::ProcessDebugFlags();
+			protector::SystemKernelDebuggerInformation();
+			protector::ThreadHideFromDebugger();
 
 			/* Optimize (CPU) Required to reduce usage. */
 			SleepEx(scan_detection_time, true);
 		}
 	}
+
 
 	void start_protect() {
 

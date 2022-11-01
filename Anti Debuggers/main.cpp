@@ -8,7 +8,7 @@ int main()
 {
 	VMProtectBeginUltra("Main Function");
 
-	/* Set Protector Detection Scan Time (1000 = 1 Second) */
+	/* Set Protector Detection Scan Time (1000MS = 1 Second) */
 	/* I do not recommend reducing this time, if the number is too low the CPU usage will increase. */
 	protector::scan_detection_time = 1000;
 
@@ -37,11 +37,11 @@ int main()
 	while (true) {
 
 		/*
-		
+	
 
 		*/
 		
-		SleepEx(10, true);
+		SleepEx(10, true); // To lower CPU usage
 	}
 
 

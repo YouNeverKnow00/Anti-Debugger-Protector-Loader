@@ -8,6 +8,7 @@ Anti Debugger constantly scans and checks them.
 * Exe scans 
 * Title scans
 * Driver scans
+* Debugger detection methods
 * Automatic Kill Debuggers
 
 # Other Functional features

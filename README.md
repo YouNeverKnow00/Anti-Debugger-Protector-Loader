@@ -27,4 +27,4 @@ Anti Debugger constantly scans and checks them.
 ![alt text](https://i.imgur.com/dW6DGux.png)
  
  # To contact
- Discord: Emree#2023
+ Discord: Emree#2000
